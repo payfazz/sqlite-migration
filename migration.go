@@ -8,18 +8,16 @@ import (
 )
 
 type MigrateParams struct {
-	Context       context.Context
 	Database      *sql.DB
 	ErrorLog      *log.Logger
 	ApplicationID uint32
 	Statements    []string
 }
 
-func Migrate(p MigrateParams) error {
+func Migrate(ctx context.Context, p MigrateParams) error {
 	if p.ApplicationID == 0 {
 		panic("migration: invalid params: ApplicationID can't be 0")
 	}
-	ctx := p.Context
 
 	conn, err := p.Database.Conn(ctx)
 	if err != nil {
