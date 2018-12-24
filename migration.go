@@ -15,13 +15,16 @@ type MigrateParams struct {
 }
 
 func Migrate(ctx context.Context, p MigrateParams) error {
+	errLog := p.ErrorLog
 	if p.ApplicationID == 0 {
 		panic("migration: invalid params: ApplicationID can't be 0")
 	}
 
 	conn, err := p.Database.Conn(ctx)
 	if err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 	defer conn.Close()
@@ -29,7 +32,9 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 	if _, err := conn.ExecContext(ctx,
 		"begin exclusive",
 	); err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 	commited := false
@@ -43,7 +48,9 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 	if err := conn.QueryRowContext(ctx,
 		"pragma application_id",
 	).Scan(&curAppID); err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 	if curAppID != p.ApplicationID {
@@ -51,7 +58,9 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 		if err := conn.QueryRowContext(ctx,
 			"pragma schema_version",
 		).Scan(&schemaVersion); err != nil {
-			p.ErrorLog.Println(err)
+			if errLog != nil {
+				errLog.Println(err)
+			}
 			return err
 		}
 		if schemaVersion != 0 {
@@ -60,7 +69,9 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 		if _, err := conn.ExecContext(ctx,
 			fmt.Sprintf("pragma application_id = %d", p.ApplicationID),
 		); err != nil {
-			p.ErrorLog.Println(err)
+			if errLog != nil {
+				errLog.Println(err)
+			}
 			return err
 		}
 	}
@@ -69,25 +80,33 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 	if err := conn.QueryRowContext(ctx,
 		"pragma user_version",
 	).Scan(&userVersion); err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 	for ; userVersion < len(p.Statements); userVersion++ {
 		statement := p.Statements[userVersion]
 		if _, err := conn.ExecContext(ctx, statement); err != nil {
-			p.ErrorLog.Println(err)
+			if errLog != nil {
+				errLog.Println(err)
+			}
 			return err
 		}
 	}
 	if _, err := conn.ExecContext(ctx,
 		fmt.Sprintf("pragma user_version = %d", userVersion),
 	); err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 
 	if _, err := conn.ExecContext(ctx, "commit"); err != nil {
-		p.ErrorLog.Println(err)
+		if errLog != nil {
+			errLog.Println(err)
+		}
 		return err
 	}
 	commited = true
