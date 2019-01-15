@@ -53,6 +53,10 @@ func Migrate(ctx context.Context, p MigrateParams) error {
 		}
 		return err
 	}
+
+	// newly created database will have schema_version equal to 0
+	// in that case, the value of curAppID doesn't matter
+
 	if curAppID != p.ApplicationID {
 		var schemaVersion int
 		if err := conn.QueryRowContext(ctx,
