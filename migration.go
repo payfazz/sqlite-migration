@@ -14,7 +14,9 @@ type MigrateParams struct {
 	Statements    []string
 }
 
-func Migrate(ctx context.Context, p MigrateParams) error {
+func Migrate(p MigrateParams) error {
+	ctx := context.Background()
+
 	errLog := p.ErrorLog
 	if p.ApplicationID == 0 {
 		panic("migration: invalid params: ApplicationID can't be 0")
