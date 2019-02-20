@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// MigrateParams for Migrate
 type MigrateParams struct {
 	Database      *sql.DB
 	ErrorLog      *log.Logger
@@ -14,6 +15,7 @@ type MigrateParams struct {
 	Statements    []string
 }
 
+// Migrate do the sql migration
 func Migrate(p MigrateParams) error {
 	ctx := context.Background()
 
