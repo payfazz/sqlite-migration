@@ -4,31 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 )
 
-// MigrateParams for Migrate
-type MigrateParams struct {
-	Database      *sql.DB
-	ErrorLog      *log.Logger
-	ApplicationID uint32
-	Statements    []string
-}
-
 // Migrate do the sql migration
-func Migrate(p MigrateParams) error {
-	ctx := context.Background()
-
-	errLog := p.ErrorLog
-	if p.ApplicationID == 0 {
-		panic("migration: invalid params: ApplicationID can't be 0")
+func Migrate(db *sql.DB, appID uint32, statements []string) error {
+	if appID == 0 {
+		panic("invalid params: appID can't be 0")
 	}
 
-	conn, err := p.Database.Conn(ctx)
+	ctx := context.Background()
+
+	conn, err := db.Conn(ctx)
 	if err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
 	defer conn.Close()
@@ -36,9 +23,6 @@ func Migrate(p MigrateParams) error {
 	if _, err := conn.ExecContext(ctx,
 		"begin exclusive",
 	); err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
 	commited := false
@@ -52,34 +36,25 @@ func Migrate(p MigrateParams) error {
 	if err := conn.QueryRowContext(ctx,
 		"pragma application_id",
 	).Scan(&curAppID); err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
 
 	// newly created database will have schema_version equal to 0
 	// in that case, the value of curAppID doesn't matter
 
-	if curAppID != p.ApplicationID {
+	if curAppID != appID {
 		var schemaVersion int
 		if err := conn.QueryRowContext(ctx,
 			"pragma schema_version",
 		).Scan(&schemaVersion); err != nil {
-			if errLog != nil {
-				errLog.Println(err)
-			}
 			return err
 		}
 		if schemaVersion != 0 {
 			return fmt.Errorf("Invalid application_id on database file")
 		}
 		if _, err := conn.ExecContext(ctx,
-			fmt.Sprintf("pragma application_id = %d", p.ApplicationID),
+			fmt.Sprintf("pragma application_id = %d", appID),
 		); err != nil {
-			if errLog != nil {
-				errLog.Println(err)
-			}
 			return err
 		}
 	}
@@ -88,33 +63,21 @@ func Migrate(p MigrateParams) error {
 	if err := conn.QueryRowContext(ctx,
 		"pragma user_version",
 	).Scan(&userVersion); err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
-	for ; userVersion < len(p.Statements); userVersion++ {
-		statement := p.Statements[userVersion]
+	for ; userVersion < len(statements); userVersion++ {
+		statement := statements[userVersion]
 		if _, err := conn.ExecContext(ctx, statement); err != nil {
-			if errLog != nil {
-				errLog.Println(err)
-			}
 			return err
 		}
 	}
 	if _, err := conn.ExecContext(ctx,
 		fmt.Sprintf("pragma user_version = %d", userVersion),
 	); err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
 
 	if _, err := conn.ExecContext(ctx, "commit"); err != nil {
-		if errLog != nil {
-			errLog.Println(err)
-		}
 		return err
 	}
 	commited = true
