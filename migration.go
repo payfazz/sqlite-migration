@@ -7,12 +7,10 @@ import (
 )
 
 // Migrate do the sql migration
-func Migrate(db *sql.DB, appID uint32, statements []string) error {
+func Migrate(ctx context.Context, db *sql.DB, appID uint32, statements []string) error {
 	if appID == 0 {
 		panic("invalid params: appID can't be 0")
 	}
-
-	ctx := context.Background()
 
 	conn, err := db.Conn(ctx)
 	if err != nil {
