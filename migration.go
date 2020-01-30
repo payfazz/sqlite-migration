@@ -23,9 +23,9 @@ func Migrate(ctx context.Context, db *sql.DB, appID uint32, statements []string)
 	); err != nil {
 		return err
 	}
-	commited := false
+	committed := false
 	defer func() {
-		if !commited {
+		if !committed {
 			conn.ExecContext(ctx, "rollback")
 		}
 	}()
@@ -78,7 +78,7 @@ func Migrate(ctx context.Context, db *sql.DB, appID uint32, statements []string)
 	if _, err := conn.ExecContext(ctx, "commit"); err != nil {
 		return err
 	}
-	commited = true
+	committed = true
 
 	return nil
 }
